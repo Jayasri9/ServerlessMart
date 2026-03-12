@@ -20,17 +20,18 @@ function PublicStore() {
       if (tenantsResponse.ok) {
         const tenants = await tenantsResponse.json();
         let effectiveId = decodedTenantId;
-        let tenant = tenants.find(
-          (t) => t.tenantId.toLowerCase().trim() === effectiveId.toLowerCase().trim()
-        );
-        if (!tenant && window.location.hash) {
-          const hashPart = window.location.hash.slice(1);
-          effectiveId = `${decodedTenantId}#${hashPart}`;
-          tenant = tenants.find(
+          let tenant = tenants.find(
             (t) => t.tenantId.toLowerCase().trim() === effectiveId.toLowerCase().trim()
           );
-        }
-        if (tenant) {
+          if (!tenant && window.location.hash) {
+            const hashPart = window.location.hash.slice(1);
+            effectiveId = `${decodedTenantId}#${hashPart}`;
+            tenant = tenants.find(
+              (t) => t.tenantId.toLowerCase().trim() === effectiveId.toLowerCase().trim()
+            );
+          }
+          if (tenant) {
+            setStoreData(tenant);
           setStoreData(tenant);
           try {
             const tenantProducts = await getStoreProducts(effectiveId);
@@ -91,25 +92,11 @@ function PublicStore() {
     );
   }
 
-  if (storeData === null) {
+  if (!storeData) {
     return (
       <div style={{ padding: "20px", textAlign: "center" }}>
-        <h2>Store not found</h2>
-        <p>The store you're looking for doesn't exist.</p>
-        <button
-          onClick={() => navigate("/marketplace")}
-          style={{
-            marginTop: "10px",
-            padding: "10px 20px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "4px",
-          }}
-        >
-          Browse Other Stores
-        </button>
+        <h2>Loading store...</h2>
+        <p>Please wait while we load the store details.</p>
       </div>
     );
   }

@@ -24,7 +24,8 @@ function TenantSignup() {
     setError("");
 
     try {
-      await registerTenant(form);
+      const result = await registerTenant(form);
+      localStorage.setItem("tenantCreatedAt", new Date().toISOString());
       alert("Tenant registered successfully! Please login.");
       navigate("/login");
     } catch (err) {

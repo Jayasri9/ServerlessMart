@@ -26,7 +26,7 @@ function TenantDashboard() {
           storeName: storeName || `Store ${tenantId}`,
           email: tenantEmail || `${tenantId}@store.com`,
           subscriptionPlan: "basic",
-          createdAt: new Date().toISOString()
+          createdAt: localStorage.getItem("tenantCreatedAt") || new Date().toISOString()
         };
         
         setTenant(tenantData);

@@ -149,7 +149,7 @@ function AddProduct() {
               </div>
 
               <div style={{ marginBottom: "15px" }}>
-                <label>Description:</label>
+                <label>Description (Optional):</label>
                 <textarea name="description" placeholder="Detailed product description" value={form.description} onChange={handleChange} rows="3" style={{ width: "100%", padding: "8px", marginTop: "5px", resize: "vertical" }} />
               </div>
 

@@ -254,11 +254,9 @@ function UserDashboard() {
                     ? `${storeCounts[tenantId] || 0} products`
                     : "Browse products from this store"}
                 </p>
-                {tenant && (
-                  <p style={{ margin: "5px 0 0 0", color: "#999", fontSize: "12px" }}>
-                    Owner: {tenant.email}
-                  </p>
-                )}
+                <p style={{ margin: "5px 0 0 0", color: "#999", fontSize: "12px" }}>
+                  Owner: {tenant ? tenant.email : "Unknown"}
+                </p>
               </div>
             );
           })}
@@ -381,3 +379,4 @@ function UserDashboard() {
 }
 
 export default UserDashboard;
+

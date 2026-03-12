@@ -217,6 +217,7 @@ public class EcommerceBackendJavaStack extends Stack {
         cartsTable.table.grantWriteData(addToCartLambda);
 
         ordersTable.table.grantWriteData(createOrderLambda);
+        ordersTable.table.grantReadData(getOrdersLambda);
 
         tenantsTable.table.grantReadData(getStoresLambda);
         productsTable.table.grantReadData(getStoreProductsLambda);
@@ -304,5 +305,5 @@ public class EcommerceBackendJavaStack extends Stack {
     // Convenience constructor
     public EcommerceBackendJavaStack(final Construct scope, final String id) {
         this(scope, id, StackProps.builder().build());
-    }
+   }
 }

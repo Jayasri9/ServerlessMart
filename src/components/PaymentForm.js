@@ -2,6 +2,7 @@ import { useState } from "react";
 import { processPayment } from "../utils/paymentGateway";
 
 function PaymentForm({ onPaymentSuccess, onPaymentCancel, amount, orderData }) {
+  const [isMockPayment, setIsMockPayment] = useState(true); // Default to mock payment
   const [paymentData, setPaymentData] = useState({
     cardNumber: "",
     expiryMonth: "",
@@ -22,7 +23,22 @@ function PaymentForm({ onPaymentSuccess, onPaymentCancel, amount, orderData }) {
     setProcessing(true);
 
     try {
-      const paymentResult = await processPayment(amount, paymentData);
+      let paymentResult;
+      
+      if (isMockPayment) {
+        // Mock payment - simulate successful payment
+        paymentResult = {
+          method: paymentData.paymentMethod,
+          paymentId: "MOCK_" + Date.now(),
+          transactionId: "TXN_" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          status: "success",
+          isMock: true
+        };
+      } else {
+        // Actual payment via payment gateway
+        paymentResult = await processPayment(amount, paymentData);
+      }
+      
       onPaymentSuccess(paymentResult);
     } catch (error) {
       alert(error.message);
@@ -141,6 +157,48 @@ function PaymentForm({ onPaymentSuccess, onPaymentCancel, amount, orderData }) {
   return (
     <div style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "20px", backgroundColor: "white" }}>
       <h3 style={{ marginTop: 0, marginBottom: "20px" }}>Payment Details</h3>
+
+      {/* Mock/Actual Payment Toggle */}
+      <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: isMockPayment ? "#fff3cd" : "#d1ecf1", borderRadius: "4px", border: "1px solid #d4d4d4" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontWeight: "bold" }}>
+            {isMockPayment ? "🧪 Demo Mode (Mock Payment)" : "🔒 Live Payment Mode"}
+          </span>
+          <label style={{ position: "relative", display: "inline-block", width: "60px", height: "34px" }}>
+            <input 
+              type="checkbox" 
+              checked={isMockPayment} 
+              onChange={(e) => setIsMockPayment(e.target.checked)}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{
+              position: "absolute",
+              cursor: "pointer",
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: isMockPayment ? "#ffc107" : "#2196F3",
+              transition: "0.4s",
+              borderRadius: "34px"
+            }}>
+              <span style={{
+                position: "absolute",
+                content: "",
+                height: "26px",
+                width: "26px",
+                left: isMockPayment ? "30px" : "4px",
+                bottom: "4px",
+                backgroundColor: "white",
+                transition: "0.4s",
+                borderRadius: "50%"
+              }}></span>
+            </span>
+          </label>
+        </div>
+        <div style={{ marginTop: "10px", fontSize: "14px", color: "#666" }}>
+          {isMockPayment 
+            ? "This is a demo payment. No real money will be charged. Orders will still be saved for tenant to see." 
+            : "This is a real payment. Configure your Stripe/Razorpay keys in config.js to process actual payments."}
+        </div>
+      </div>
 
       <div style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>

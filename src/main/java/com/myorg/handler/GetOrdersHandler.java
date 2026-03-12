@@ -97,7 +97,7 @@ public class GetOrdersHandler implements RequestHandler<APIGatewayProxyRequestEv
                             "Content-Type", "application/json",
                             "Access-Control-Allow-Origin", "*"
                     ))
-                    .withBody("{\"error\":\"" + e.getMessage() + "\"});
+.withBody("{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 }
