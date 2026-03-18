@@ -255,7 +255,9 @@ function UserDashboard() {
                     : "Browse products from this store"}
                 </p>
                 <p style={{ margin: "5px 0 0 0", color: "#999", fontSize: "12px" }}>
-                  Owner: {tenant ? tenant.email : "Unknown"}
+
+                  Owner email: {tenant ? tenant.email : "Unknown"}
+
                 </p>
               </div>
             );

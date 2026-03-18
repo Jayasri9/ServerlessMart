@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { logout } from "../auth/auth";
 import { useNavigate } from "react-router-dom";
+import { getTenantById } from "../api/api.js";
 
 function TenantDashboard() {
   const navigate = useNavigate();
@@ -9,34 +10,23 @@ function TenantDashboard() {
   const tenantId = localStorage.getItem("tenantId");
 
   useEffect(() => {
-    const loadTenantData = async () => {
-      try {
-        if (!tenantId) {
-          console.error("No tenant ID found");
-          navigate("/tenant-login");
-          return;
-        }
-
-        // Use stored tenant data instead of API call
-        const storeName = localStorage.getItem("storeName");
-        const tenantEmail = localStorage.getItem("tenantEmail");
-        
-        const tenantData = {
-          tenantId: tenantId,
-          storeName: storeName || `Store ${tenantId}`,
-          email: tenantEmail || `${tenantId}@store.com`,
-          subscriptionPlan: "basic",
-          createdAt: localStorage.getItem("tenantCreatedAt") || new Date().toISOString()
-        };
-        
-        setTenant(tenantData);
-      } catch (err) {
-        console.error("Failed to load tenant data:", err);
-        setTenant(null);
-      } finally {
-        setLoading(false);
+  const loadTenantData = async () => {
+    try {
+      if (!tenantId) {
+        console.error("No tenant ID found");
+        navigate("/tenant-login");
+        return;
       }
-    };
+
+      const tenantData = await getTenantById(tenantId);
+      setTenant(tenantData);
+    } catch (err) {
+      console.error("Failed to load tenant data:", err);
+      setTenant(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
     loadTenantData();
   }, [navigate, tenantId]);

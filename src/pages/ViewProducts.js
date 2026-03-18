@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getProducts } from "../api/api";
+import { getProducts, deleteProduct } from "../api/api";
 import { logout, getRole } from "../auth/auth";
 import { useNavigate } from "react-router-dom";
 
@@ -46,7 +46,14 @@ function ViewProducts() {
 
   const handleDelete = async (productId) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
-      alert("Delete functionality coming soon!");
+      try {
+        await deleteProduct(productId, tenantId);
+        alert("Product deleted successfully!");
+        loadProducts(); // Refresh the products list
+      } catch (err) {
+        console.error("Delete failed:", err);
+        alert("Failed to delete product: " + err.message);
+      }
     }
   };
 

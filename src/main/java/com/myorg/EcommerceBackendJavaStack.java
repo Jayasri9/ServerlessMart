@@ -43,7 +43,33 @@ public class EcommerceBackendJavaStack extends Stack {
         ProductsTableConstruct productsTable = new ProductsTableConstruct(this, "ProductsTableConstruct");
         CartsTableConstruct cartsTable = new CartsTableConstruct(this, "CartsTableConstruct");
         OrdersTableConstruct ordersTable = new OrdersTableConstruct(this, "OrdersTableConstruct");
-        SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct(this, "SubscriptionsTableConstruct");
+SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct(this, "SubscriptionsTableConstruct");
+
+        // ------------------------
+        // SUBSCRIPTION LAMBDAS
+        // ------------------------
+        Function createSubscriptionLambda = Function.Builder.create(this, "CreateSubscriptionLambda")
+                .runtime(Runtime.JAVA_17)
+                .handler("com.myorg.handler.CreateSubscriptionHandler::handleRequest")
+                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
+                .environment(Map.of("SUBSCRIPTIONS_TABLE", subscriptionsTable.table.getTableName()))
+                .timeout(Duration.seconds(30))
+                .memorySize(1024)
+                .build();
+
+        Function getSubscriptionLambda = Function.Builder.create(this, "GetSubscriptionLambda")
+                .runtime(Runtime.JAVA_17)
+                .handler("com.myorg.handler.GetSubscriptionHandler::handleRequest")
+                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
+                .environment(Map.of("SUBSCRIPTIONS_TABLE", subscriptionsTable.table.getTableName()))
+                .timeout(Duration.seconds(15))
+                .memorySize(512)
+                .build();
+
+        // Grant permissions
+        subscriptionsTable.table.grantReadWriteData(createSubscriptionLambda);
+        subscriptionsTable.table.grantReadData(getSubscriptionLambda);
+
 
         // ------------------------
         // PRODUCT LAMBDAS
@@ -198,11 +224,22 @@ public class EcommerceBackendJavaStack extends Stack {
                 .memorySize(512)
                 .build();
 
+        // Delete Product Lambda
+        Function deleteProductLambda = Function.Builder.create(this, "DeleteProductLambda")
+                .runtime(Runtime.JAVA_17)
+                .handler("com.myorg.handler.DeleteProductHandler::handleRequest")
+                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
+                .environment(Map.of("PRODUCTS_TABLE", productsTable.table.getTableName()))
+                .timeout(Duration.seconds(15))
+                .memorySize(512)
+                .build();
+
         // ------------------------
         // PERMISSIONS
         // ------------------------
         productsTable.table.grantReadData(getProductsLambda);
         productsTable.table.grantWriteData(createProductLambda);
+        productsTable.table.grantReadWriteData(deleteProductLambda);
 
         tenantsTable.table.grantReadData(getTenantsLambda);
         tenantsTable.table.grantReadData(getTenantLambda);
@@ -239,6 +276,10 @@ public class EcommerceBackendJavaStack extends Stack {
         var products = api.getRoot().addResource("products");
         products.addMethod("GET", new LambdaIntegration(getProductsLambda));
         products.addMethod("POST", new LambdaIntegration(createProductLambda));
+        
+        // ---- /products/{productId}
+        var productResource = products.addResource("{productId}");
+        productResource.addMethod("DELETE", new LambdaIntegration(deleteProductLambda));
 
         // ---- /tenants
         var tenants = api.getRoot().addResource("tenants");
@@ -287,11 +328,20 @@ public class EcommerceBackendJavaStack extends Stack {
         var stores = api.getRoot().addResource("stores");
         stores.addMethod("GET", new LambdaIntegration(getStoresLambda));
 
-        // ---- /store/{tenantId}/products
+// ---- /store/{tenantId}/products
         var store = api.getRoot().addResource("store");
         var storeTenant = store.addResource("{tenantId}");
         var storeProducts = storeTenant.addResource("products");
         storeProducts.addMethod("GET", new LambdaIntegration(getStoreProductsLambda));
+
+        // ---- /subscriptions
+        var subscriptions = api.getRoot().addResource("subscriptions");
+        subscriptions.addMethod("POST", new LambdaIntegration(createSubscriptionLambda));
+        
+        // ---- /subscriptions/{tenantId}
+        var subscriptionTenant = subscriptions.addResource("{tenantId}");
+        subscriptionTenant.addMethod("GET", new LambdaIntegration(getSubscriptionLambda));
+
 
         // ------------------------
         // OUTPUT

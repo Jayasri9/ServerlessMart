@@ -161,6 +161,24 @@ export const getStoreProducts = async (tenantId) => {
   return res.json();
 };
 
+// DELETE product
+export const deleteProduct = async (productId, tenantId) => {
+  const encodedProductId = encodeURIComponent(productId);
+  const res = await fetch(`${API_BASE}/products/${encodedProductId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tenantId }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Delete error:", text);
+    throw new Error("Failed to delete product");
+  }
+  return res.json();
+};
+
 // REGISTER tenant (Shop Owner)
 export const registerTenant = async (tenant) => {
   const response = await fetch(`${API_BASE}/tenants`, {
@@ -190,5 +208,12 @@ export const getTenant = async () => {
 
   if (!res.ok) throw new Error("Failed to fetch tenant");
 
+  return res.json();
+};
+
+// GET tenant by ID
+export const getTenantById = async (tenantId) => {
+  const res = await fetch(`${API_BASE}/tenants/${encodeURIComponent(tenantId)}`);
+  if (!res.ok) throw new Error("Failed to fetch tenant");
   return res.json();
 };

@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.time.Instant;
 
 public class CreateTenantHandler
         implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
@@ -39,6 +40,8 @@ public class CreateTenantHandler
             item.put("email", AttributeValue.builder().s(email).build());
             item.put("password", AttributeValue.builder().s(password).build());
             item.put("storeName", AttributeValue.builder().s(storeName).build());
+            item.put("subscriptionPlan", AttributeValue.builder().s(body.getOrDefault("subscriptionPlan", "basic")).build());
+            item.put("createdAt", AttributeValue.builder().s(Instant.now().toString()).build());
 
             dynamoDb.putItem(PutItemRequest.builder()
                     .tableName(tableName)
@@ -66,3 +69,4 @@ public class CreateTenantHandler
         }
     }
 }
+
