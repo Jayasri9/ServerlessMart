@@ -45,31 +45,7 @@ public class EcommerceBackendJavaStack extends Stack {
         OrdersTableConstruct ordersTable = new OrdersTableConstruct(this, "OrdersTableConstruct");
 SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct(this, "SubscriptionsTableConstruct");
 
-        // ------------------------
-        // SUBSCRIPTION LAMBDAS
-        // ------------------------
-        Function createSubscriptionLambda = Function.Builder.create(this, "CreateSubscriptionLambda")
-                .runtime(Runtime.JAVA_17)
-                .handler("com.myorg.handler.CreateSubscriptionHandler::handleRequest")
-                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
-                .environment(Map.of("SUBSCRIPTIONS_TABLE", subscriptionsTable.table.getTableName()))
-                .timeout(Duration.seconds(30))
-                .memorySize(1024)
-                .build();
-
-        Function getSubscriptionLambda = Function.Builder.create(this, "GetSubscriptionLambda")
-                .runtime(Runtime.JAVA_17)
-                .handler("com.myorg.handler.GetSubscriptionHandler::handleRequest")
-                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
-                .environment(Map.of("SUBSCRIPTIONS_TABLE", subscriptionsTable.table.getTableName()))
-                .timeout(Duration.seconds(15))
-                .memorySize(512)
-                .build();
-
-        // Grant permissions
-        subscriptionsTable.table.grantReadWriteData(createSubscriptionLambda);
-        subscriptionsTable.table.grantReadData(getSubscriptionLambda);
-
+        
 
         // ------------------------
         // PRODUCT LAMBDAS
@@ -155,6 +131,24 @@ SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct
         Function getUsersLambda = Function.Builder.create(this, "GetUsersLambda")
                 .runtime(Runtime.JAVA_17)
                 .handler("com.myorg.handler.GetUsersHandler::handleRequest")
+                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
+                .environment(Map.of("USERS_TABLE", usersTable.table.getTableName()))
+                .timeout(Duration.seconds(15))
+                .memorySize(512)
+                .build();
+
+        Function updateUserLambda = Function.Builder.create(this, "UpdateUserLambda")
+                .runtime(Runtime.JAVA_17)
+                .handler("com.myorg.handler.UpdateUserHandler::handleRequest")
+                .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
+                .environment(Map.of("USERS_TABLE", usersTable.table.getTableName()))
+                .timeout(Duration.seconds(15))
+                .memorySize(512)
+                .build();
+
+        Function getUserByIdLambda = Function.Builder.create(this, "GetUserByIdLambda")
+                .runtime(Runtime.JAVA_17)
+                .handler("com.myorg.handler.GetUserByIdHandler::handleRequest")
                 .code(Code.fromAsset("target/ecommerce-backend-java-0.1.jar"))
                 .environment(Map.of("USERS_TABLE", usersTable.table.getTableName()))
                 .timeout(Duration.seconds(15))
@@ -248,6 +242,8 @@ SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct
         usersTable.table.grantWriteData(createUserLambda);
         usersTable.table.grantReadData(authCustomerLambda);
         usersTable.table.grantReadData(getUsersLambda);
+        usersTable.table.grantReadWriteData(updateUserLambda);
+        usersTable.table.grantReadData(getUserByIdLambda);
 
         cartsTable.table.grantReadData(getCartLambda);
         cartsTable.table.grantReadData(addToCartLambda);
@@ -295,6 +291,11 @@ SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct
         users.addMethod("GET", new LambdaIntegration(getUsersLambda));
         users.addMethod("POST", new LambdaIntegration(createUserLambda));
         
+        // ---- /users/{userId} 
+        var userResource = users.addResource("{userId}");
+        userResource.addMethod("GET", new LambdaIntegration(getUserByIdLambda));
+        userResource.addMethod("PATCH", new LambdaIntegration(updateUserLambda));
+        
         // ---- /auth/users/{email} (Customer Authentication)
         var auth = api.getRoot().addResource("auth");
         var authUsers = auth.addResource("users");
@@ -333,15 +334,6 @@ SubscriptionsTableConstruct subscriptionsTable = new SubscriptionsTableConstruct
         var storeTenant = store.addResource("{tenantId}");
         var storeProducts = storeTenant.addResource("products");
         storeProducts.addMethod("GET", new LambdaIntegration(getStoreProductsLambda));
-
-        // ---- /subscriptions
-        var subscriptions = api.getRoot().addResource("subscriptions");
-        subscriptions.addMethod("POST", new LambdaIntegration(createSubscriptionLambda));
-        
-        // ---- /subscriptions/{tenantId}
-        var subscriptionTenant = subscriptions.addResource("{tenantId}");
-        subscriptionTenant.addMethod("GET", new LambdaIntegration(getSubscriptionLambda));
-
 
         // ------------------------
         // OUTPUT
