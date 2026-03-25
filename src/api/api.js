@@ -104,6 +104,23 @@ export const getCart = async (userId, tenantId) => {
   return res.json();
 };
 
+// UPDATE cart - PUT full items list
+export const updateCart = async (userId, tenantId, items) => {
+  const res = await fetch(`${API_BASE}/cart/${userId}/${tenantId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(text);
+    throw new Error("Failed to update cart");
+  }
+  return res.json();
+};
+
 /* =======================
    ORDERS
    ======================= */

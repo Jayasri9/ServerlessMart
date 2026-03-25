@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createOrder } from "../api/api";
+import { createOrder, updateCart } from "../api/api";
 import { getRole } from "../auth/auth";
+import { refreshCart } from "../utils/dataSync";
 import PaymentForm from "../components/PaymentForm";
 
 function Checkout() {
@@ -26,14 +27,15 @@ function Checkout() {
     loadCart();
   }, [navigate]);
 
-  const loadCart = () => {
+  const loadCart = async () => {
     try {
-      const savedCart = localStorage.getItem("cart");
-      if (savedCart) {
-        setCartItems(JSON.parse(savedCart));
-      }
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId") || localStorage.getItem("currentTenantId") || "default-tenant";
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
     } catch (err) {
       console.error("Failed to load cart:", err);
+      setCartItems([]);
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,8 @@ function Checkout() {
       console.log("Creating order with data:", orderData);
       await createOrder(orderData);
 
-      localStorage.removeItem("cart");
+      const tenantId = cartItems[0]?.tenantId || localStorage.getItem("tenantId") || "default-tenant";
+      await updateCart(userId, tenantId, []);
       alert(`Order placed successfully! Payment ID: ${paymentResult.paymentId}`);
       navigate("/orders");
     } catch (err) {
@@ -139,7 +142,8 @@ function Checkout() {
       console.log("Creating COD order with data:", orderData);
       await createOrder(orderData);
 
-      localStorage.removeItem("cart");
+      const tenantId = cartItems[0]?.tenantId || localStorage.getItem("tenantId") || "default-tenant";
+      await updateCart(userId, tenantId, []);
       alert("Order placed successfully! You will pay on delivery.");
       navigate("/orders");
     } catch (err) {

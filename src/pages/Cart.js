@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRole } from "../auth/auth";
 import { addToCart, getCart } from "../api/api";
+import { refreshCart } from "../utils/dataSync";
+import { updateCart } from "../api/api";
 
 function Cart() {
   const navigate = useNavigate();
@@ -24,33 +26,11 @@ function Cart() {
         || localStorage.getItem("currentTenantId")
         || "default-tenant";
       
-      if (userId) {
-        console.log("Loading cart for user:", userId, "tenant:", tenantId);
-        const cartData = await getCart(userId, tenantId);
-        console.log("Cart data received:", cartData);
-        
-        if (cartData && cartData.items) {
-          let items = cartData.items;
-          if (typeof items === 'string') {
-            items = JSON.parse(items);
-          }
-          setCartItems(items || []);
-        } else {
-          const savedCart = localStorage.getItem("cart");
-          if (savedCart) setCartItems(JSON.parse(savedCart));
-        }
-      } else {
-        const savedCart = localStorage.getItem("cart");
-        if (savedCart) setCartItems(JSON.parse(savedCart));
-      }
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
     } catch (err) {
       console.error("Failed to load cart:", err);
-      try {
-        const savedCart = localStorage.getItem("cart");
-        if (savedCart) setCartItems(JSON.parse(savedCart));
-      } catch (localErr) {
-        console.error("Failed to load from localStorage:", localErr);
-      }
+      setCartItems([]);
     } finally {
       setLoading(false);
     }
@@ -59,7 +39,6 @@ function Cart() {
   const handleRemoveFromCart = async (productId) => {
     const updatedCart = cartItems.filter(item => item.productId !== productId);
     setCartItems(updatedCart);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
     
     try {
       const userId = localStorage.getItem("userId");
@@ -67,16 +46,17 @@ function Cart() {
         || localStorage.getItem("currentTenantId")
         || "default-tenant";
       
-      if (userId && updatedCart.length > 0) {
-        await addToCart({
-          userId: userId,
-          tenantId: tenantId,
-          product: updatedCart[0],
-          quantity: 1
-        });
+      if (userId) {
+        await updateCart(userId, tenantId, updatedCart);
       }
+      // Refresh to confirm
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
     } catch (err) {
-      console.error("Failed to sync cart with backend:", err);
+      console.error("Failed to update cart:", err);
+      // Rollback optimistic
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
     }
   };
 
@@ -92,7 +72,6 @@ function Cart() {
         : item
     );
     setCartItems(updatedCart);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
     
     try {
       const userId = localStorage.getItem("userId");
@@ -100,17 +79,17 @@ function Cart() {
         || localStorage.getItem("currentTenantId")
         || "default-tenant";
       
-      const updatedItem = updatedCart.find(item => item.productId === productId);
-      if (userId && updatedItem) {
-        await addToCart({
-          userId: userId,
-          tenantId: tenantId,
-          product: updatedItem,
-          quantity: newQuantity
-        });
+      if (userId) {
+        await updateCart(userId, tenantId, updatedCart);
       }
+      // Refresh to confirm
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
     } catch (err) {
-      console.error("Failed to update cart on backend:", err);
+      console.error("Failed to update cart:", err);
+      // Rollback
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
     }
   };
 

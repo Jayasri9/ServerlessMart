@@ -32,15 +32,28 @@ public class CreateOrderHandler implements RequestHandler<APIGatewayProxyRequest
             String tenantId = body.get("tenantId").toString();
             Object items = body.get("items");
             Number totalAmount = (Number) body.get("totalAmount");
-            String paymentId = body.containsKey("paymentId")
+String paymentId = body.containsKey("paymentId")
                     ? body.get("paymentId").toString()
                     : "PAY" + UUID.randomUUID().toString().substring(0, 8);
+
+            Object customerInfoObj = body.get("customerInfo");
+            String customerInfoJson = null;
+            if (customerInfoObj != null) {
+                try {
+                    customerInfoJson = mapper.writeValueAsString(customerInfoObj);
+                } catch (Exception e) {
+                    context.getLogger().log("Failed to serialize customerInfo: " + e.getMessage());
+                }
+            }
 
             Map<String, AttributeValue> item = new HashMap<>();
             item.put("orderId", AttributeValue.builder().s(orderId).build());
             item.put("userId", AttributeValue.builder().s(userId).build());
             item.put("tenantId", AttributeValue.builder().s(tenantId).build());
             item.put("items", AttributeValue.builder().s(mapper.writeValueAsString(items)).build());
+            if (customerInfoJson != null) {
+                item.put("customerInfo", AttributeValue.builder().s(customerInfoJson).build());
+            }
             item.put("totalAmount", AttributeValue.builder().n(totalAmount.toString()).build());
             item.put("orderStatus", AttributeValue.builder().s("PENDING").build());
             item.put("paymentId", AttributeValue.builder().s(paymentId).build());

@@ -82,32 +82,7 @@ function TenantDashboard() {
             </button>
           </div>
 
-          <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f8f9fa" }}>
-            <h3>Subscription</h3>
-            <p><strong>Plan:</strong> {(tenant.subscriptionPlan || "basic").toUpperCase()}</p>
-            <p><strong>Status:</strong> 
-              <span style={{ 
-                color: (tenant.subscriptionStatus || "active") === "active" ? "green" : "red",
-                fontWeight: "bold"
-              }}>
-                {(tenant.subscriptionStatus || "active").toUpperCase()}
-              </span>
-            </p>
-            <button
-              onClick={() => navigate("/subscription")}
-              style={{
-                marginTop: "10px",
-                padding: "8px 16px",
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: "4px"
-              }}
-            >
-              Manage Subscription
-            </button>
-          </div>
+
         </div>
       )}
 

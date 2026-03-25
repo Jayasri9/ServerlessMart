@@ -11,8 +11,7 @@ function TenantProfile() {
 
   const [form, setForm] = useState({
     storeName: "",
-    email: "",
-    subscriptionPlan: "basic"
+    email: ""
   });
 
   useEffect(() => {
@@ -121,7 +120,7 @@ function TenantProfile() {
       </div>
 
       {tenant && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "30px" }}>
+        <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}>
           <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}>
             <h3>Store Information</h3>
             {!editing ? (
@@ -135,9 +134,7 @@ function TenantProfile() {
                 <div style={{ marginBottom: "15px" }}>
                   <strong>Tenant ID:</strong> {tenant.tenantId}
                 </div>
-                <div style={{ marginBottom: "15px" }}>
-                  <strong>Subscription Plan:</strong> {tenant.subscriptionPlan?.toUpperCase()}
-                </div>
+
                 <div style={{ marginBottom: "15px" }}>
                   <strong>Member Since:</strong> {new Date(tenant.createdAt).toLocaleDateString()}
                 </div>
@@ -178,19 +175,7 @@ function TenantProfile() {
                   />
                 </div>
 
-                <div style={{ marginBottom: "15px" }}>
-                  <label>Subscription Plan:</label>
-                  <select
-                    name="subscriptionPlan"
-                    value={form.subscriptionPlan}
-                    onChange={handleChange}
-                    style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-                  >
-                    <option value="basic">Basic</option>
-                    <option value="premium">Premium</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
+
 
                 <div style={{ marginBottom: "15px" }}>
                   <strong>Tenant ID:</strong> {tenant.tenantId} (cannot be changed)
@@ -228,74 +213,7 @@ function TenantProfile() {
             )}
           </div>
 
-          <div style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "8px" }}>
-            <h3>Subscription Details</h3>
-            <div style={{ marginBottom: "15px" }}>
-              <strong>Current Plan:</strong> {tenant.subscriptionPlan?.toUpperCase()}
-            </div>
-            <div style={{ marginBottom: "15px" }}>
-              <strong>Status:</strong>{" "}
-              <span
-                style={{
-                  color: tenant.subscriptionStatus === "active" ? "green" : "red",
-                  fontWeight: "bold",
-                  marginLeft: "5px"
-                }}
-              >
-                {tenant.subscriptionStatus?.toUpperCase()}
-              </span>
-            </div>
 
-            <div
-              style={{
-                padding: "15px",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "4px",
-                marginBottom: "15px"
-              }}
-            >
-              <h4>Plan Features:</h4>
-              {tenant.subscriptionPlan === "basic" && (
-                <ul>
-                  <li>Up to 50 products</li>
-                  <li>Basic analytics</li>
-                  <li>Email support</li>
-                </ul>
-              )}
-              {tenant.subscriptionPlan === "premium" && (
-                <ul>
-                  <li>Up to 500 products</li>
-                  <li>Advanced analytics</li>
-                  <li>Priority support</li>
-                  <li>Custom branding</li>
-                </ul>
-              )}
-              {tenant.subscriptionPlan === "enterprise" && (
-                <ul>
-                  <li>Unlimited products</li>
-                  <li>Full analytics suite</li>
-                  <li>24/7 phone support</li>
-                  <li>Custom integrations</li>
-                  <li>White-label options</li>
-                </ul>
-              )}
-            </div>
-
-            <button
-              onClick={() => navigate("/subscription")}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: "4px",
-                width: "100%"
-              }}
-            >
-              Upgrade/Change Plan
-            </button>
-          </div>
         </div>
       )}
 

@@ -8,8 +8,7 @@ function TenantSignup() {
     tenantId: "",
     email: "",
     password: "",
-    storeName: "",
-    subscriptionPlan: "basic"
+    storeName: ""
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -93,19 +92,7 @@ function TenantSignup() {
           />
         </div>
 
-        <div style={{ marginBottom: "15px" }}>
-          <label>Subscription Plan:</label>
-          <select
-            name="subscriptionPlan"
-            value={form.subscriptionPlan}
-            onChange={handleChange}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          >
-            <option value="basic">Basic - Free</option>
-            <option value="premium">Premium - $9.99/month</option>
-            <option value="enterprise">Enterprise - $29.99/month</option>
-          </select>
-        </div>
+
 
         <button
           type="submit"
