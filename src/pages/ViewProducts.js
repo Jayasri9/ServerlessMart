@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getProducts, deleteProduct } from "../api/api";
+import { getProducts, deleteProduct, updateProductStatus, updateAllProductsStatus } from "../api/api";
 import { logout, getRole } from "../auth/auth";
 import { useNavigate } from "react-router-dom";
 
@@ -58,15 +58,37 @@ function ViewProducts() {
   };
 
   const handleToggleStatus = async (productId, currentStatus) => {
-    alert("Toggle status functionality coming soon!");
+    try {
+      const newStatus = !currentStatus;
+      await updateProductStatus(productId, tenantId, newStatus);
+      alert(`Product ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+      loadProducts(); // Refresh the products list
+    } catch (err) {
+      console.error("Toggle status failed:", err);
+      alert("Failed to toggle product status: " + err.message);
+    }
   };
 
   const handleActivateAll = async () => {
-    alert("Activate all functionality coming soon!");
+    try {
+      const result = await updateAllProductsStatus(tenantId, true);
+      alert(`Successfully activated ${result.updatedCount} products!`);
+      loadProducts(); // Refresh the products list
+    } catch (err) {
+      console.error("Activate all failed:", err);
+      alert("Failed to activate all products: " + err.message);
+    }
   };
 
   const handleDeactivateAll = async () => {
-    alert("Deactivate all functionality coming soon!");
+    try {
+      const result = await updateAllProductsStatus(tenantId, false);
+      alert(`Successfully deactivated ${result.updatedCount} products!`);
+      loadProducts(); // Refresh the products list
+    } catch (err) {
+      console.error("Deactivate all failed:", err);
+      alert("Failed to deactivate all products: " + err.message);
+    }
   };
 
   const handleStockUpdate = async (productId) => {

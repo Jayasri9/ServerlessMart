@@ -253,7 +253,7 @@ function StorePreview() {
                       fontWeight: "bold", 
                       color: "#28a745" 
                     }}>
-                      ${product.price}
+                      ₹{product.price}
                     </span>
                     <span style={{ 
                       fontSize: "0.9em", 

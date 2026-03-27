@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import org.mindrot.jbcrypt.BCrypt;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,10 +36,13 @@ public class CreateTenantHandler
             String password = body.get("password");
             String storeName = body.get("storeName");
 
+            // Hash the password using BCrypt
+            String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+
             Map<String, AttributeValue> item = new HashMap<>();
             item.put("tenantId", AttributeValue.builder().s(tenantId).build());
             item.put("email", AttributeValue.builder().s(email).build());
-            item.put("password", AttributeValue.builder().s(password).build());
+            item.put("password", AttributeValue.builder().s(hashedPassword).build());
             item.put("storeName", AttributeValue.builder().s(storeName).build());
             item.put("subscriptionPlan", AttributeValue.builder().s(body.getOrDefault("subscriptionPlan", "basic")).build());
             item.put("createdAt", AttributeValue.builder().s(Instant.now().toString()).build());

@@ -74,6 +74,25 @@ export const loginUser = async (credentials) => {
   return res.json();
 };
 
+// UPDATE user
+export const updateUser = async (userId, userData) => {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(text);
+    throw new Error("Failed to update user");
+  }
+
+  return res.json();
+};
+
 /* =======================
    CART
    ======================= */
@@ -117,6 +136,22 @@ export const updateCart = async (userId, tenantId, items) => {
     const text = await res.text();
     console.error(text);
     throw new Error("Failed to update cart");
+  }
+  return res.json();
+};
+
+// CLEAR cart - DELETE cart items
+export const clearCart = async (userId, tenantId) => {
+  const res = await fetch(`${API_BASE}/cart/${userId}/${tenantId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(text);
+    throw new Error("Failed to clear cart");
   }
   return res.json();
 };
@@ -225,6 +260,41 @@ export const getTenant = async () => {
 
   if (!res.ok) throw new Error("Failed to fetch tenant");
 
+  return res.json();
+};
+
+// UPDATE product status (activate/deactivate)
+export const updateProductStatus = async (productId, tenantId, isActive) => {
+  const encodedProductId = encodeURIComponent(productId);
+  const res = await fetch(`${API_BASE}/products/${encodedProductId}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tenantId, isActive }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Update status error:", text);
+    throw new Error("Failed to update product status");
+  }
+  return res.json();
+};
+
+// UPDATE all products status for a tenant (bulk activate/deactivate)
+export const updateAllProductsStatus = async (tenantId, isActive) => {
+  const res = await fetch(`${API_BASE}/products/bulk-status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tenantId, isActive }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Bulk update status error:", text);
+    throw new Error("Failed to update all products status");
+  }
   return res.json();
 };
 

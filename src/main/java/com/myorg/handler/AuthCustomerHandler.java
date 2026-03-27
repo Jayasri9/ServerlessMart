@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import org.mindrot.jbcrypt.BCrypt;
+import com.myorg.util.JWTUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +26,10 @@ public class AuthCustomerHandler implements RequestHandler<APIGatewayProxyReques
             Context context) {
 
         try {
+            // Parse request body to get password
+            Map<String, String> requestBody = mapper.readValue(request.getBody(), Map.class);
+            String password = requestBody.get("password");
+            
             String email = request.getPathParameters().get("email");
             context.getLogger().log("Authenticating customer with email: " + email);
 
@@ -57,6 +63,38 @@ public class AuthCustomerHandler implements RequestHandler<APIGatewayProxyReques
                     customerData.put(k, v.bool());
                 }
             });
+
+            // Validate password
+            String storedPassword = (String) customerData.get("password");
+            boolean passwordValid = false;
+            
+            if (storedPassword != null) {
+                // Check if password is hashed (starts with $2a$, $2b$, etc.)
+                if (storedPassword.startsWith("$2")) {
+                    passwordValid = BCrypt.checkpw(password, storedPassword);
+                } else {
+                    // Legacy plain text password - for backward compatibility
+                    passwordValid = password.equals(storedPassword);
+                }
+            }
+
+            if (!passwordValid) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(401)
+                        .withHeaders(Map.of(
+                                "Content-Type", "application/json",
+                                "Access-Control-Allow-Origin", "*"
+                        ))
+                        .withBody("{\"error\":\"Invalid password\"}");
+            }
+
+            // Generate JWT token
+            String userId = (String) customerData.get("userId");
+            String jwtToken = JWTUtil.generateToken(email, "USER", userId);
+            
+            // Add token to response
+            customerData.put("token", jwtToken);
+            customerData.remove("password"); // Don't send password back to client
 
             String jsonResponse = mapper.writeValueAsString(customerData);
 

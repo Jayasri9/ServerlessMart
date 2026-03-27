@@ -49,17 +49,28 @@ public class GetUserByIdHandler implements RequestHandler<APIGatewayProxyRequest
 
             Map<String, Object> userData = new HashMap<>();
             response.item().forEach((k, v) -> {
+                context.getLogger().log("Processing attribute: " + k + " = " + v);
                 if (v.s() != null) {
                     userData.put(k, v.s());
+                    context.getLogger().log("Added string attribute: " + k + " = " + v.s());
                 } else if (v.n() != null) {
                     userData.put(k, v.n());
+                    context.getLogger().log("Added number attribute: " + k + " = " + v.n());
                 } else if (v.bool() != null) {
                     userData.put(k, v.bool());
+                    context.getLogger().log("Added boolean attribute: " + k + " = " + v.bool());
                 }
             });
+            
+            context.getLogger().log("Final userData map: " + userData.toString());
 
             // Remove password for security
             userData.remove("password");
+
+            // Ensure address field exists (for backward compatibility)
+            if (!userData.containsKey("address")) {
+                userData.put("address", "");
+            }
 
             String jsonResponse = mapper.writeValueAsString(userData);
 

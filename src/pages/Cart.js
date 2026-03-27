@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRole } from "../auth/auth";
-import { addToCart, getCart } from "../api/api";
+import { addToCart, getCart, updateCart, clearCart } from "../api/api";
 import { refreshCart } from "../utils/dataSync";
-import { updateCart } from "../api/api";
+import { formatCurrency } from "../utils/currency";
+import React from "react";
 
 function Cart() {
   const navigate = useNavigate();
@@ -26,7 +27,10 @@ function Cart() {
         || localStorage.getItem("currentTenantId")
         || "default-tenant";
       
+      console.log("Cart: Loading for userId:", userId, "tenantId:", tenantId);
+      
       const items = await refreshCart(userId, tenantId, false);
+      console.log("Cart: Loaded items:", items);
       setCartItems(items);
     } catch (err) {
       console.error("Failed to load cart:", err);
@@ -54,7 +58,11 @@ function Cart() {
       setCartItems(items);
     } catch (err) {
       console.error("Failed to update cart:", err);
-      // Rollback optimistic
+      // Rollback optimistic - need to get userId and tenantId again
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId")
+        || localStorage.getItem("currentTenantId")
+        || "default-tenant";
       const items = await refreshCart(userId, tenantId, false);
       setCartItems(items);
     }
@@ -87,9 +95,33 @@ function Cart() {
       setCartItems(items);
     } catch (err) {
       console.error("Failed to update cart:", err);
-      // Rollback
+      // Rollback - need to get userId and tenantId again
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId")
+        || localStorage.getItem("currentTenantId")
+        || "default-tenant";
       const items = await refreshCart(userId, tenantId, false);
       setCartItems(items);
+    }
+  };
+
+  const handleClearCart = async () => {
+    if (window.confirm("Are you sure you want to clear your cart?")) {
+      try {
+        const userId = localStorage.getItem("userId");
+        const tenantId = localStorage.getItem("tenantId")
+          || localStorage.getItem("currentTenantId")
+          || "default-tenant";
+        
+        if (userId) {
+          await clearCart(userId, tenantId);
+          setCartItems([]);
+          alert("Cart cleared successfully!");
+        }
+      } catch (err) {
+        console.error("Failed to clear cart:", err);
+        alert("Failed to clear cart. Please try again.");
+      }
     }
   };
 
@@ -115,19 +147,36 @@ function Cart() {
     <div className="container" style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
         <h2>Shopping Cart ({cartItems.length} items)</h2>
-        <button
-          onClick={() => navigate("/user")}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "4px"
-          }}
-        >
-          Continue Shopping
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={() => navigate("/user")}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              cursor: "pointer",
+              borderRadius: "4px"
+            }}
+          >
+            Continue Shopping
+          </button>
+          {cartItems.length > 0 && (
+            <button
+              onClick={handleClearCart}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#dc3545",
+                color: "white",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: "4px"
+              }}
+            >
+              Clear Cart
+            </button>
+          )}
+        </div>
       </div>
 
       {cartItems.length === 0 ? (
@@ -149,86 +198,95 @@ function Cart() {
           </button>
         </div>
       ) : (
-        <div>
-          {cartItems.map(item => (
-            <div
-              key={item.productId}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "15px",
-                marginBottom: "15px",
-                display: "flex",
-                gap: "15px",
-                alignItems: "center"
-              }}
-            >
-              <div style={{ flexShrink: 0 }}>
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px" }}
-                  />
-                ) : (
-                  <div style={{
-                    width: "80px",
-                    height: "80px",
-                    backgroundColor: "#f8f9fa",
-                    borderRadius: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#666"
-                  }}>
-                    No Image
+        <React.Fragment>
+          <div>
+            {cartItems.map(item => (
+              <div
+                key={item.productId}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  padding: "15px",
+                  marginBottom: "15px",
+                  display: "flex",
+                  gap: "15px",
+                  alignItems: "center"
+                }}
+              >
+                <div style={{ flexShrink: 0 }}>
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px" }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: "80px",
+                      height: "80px",
+                      backgroundColor: "#f8f9fa",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#666"
+                    }}>
+                      No Image
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: "0 0 5px 0" }}>{item.name}</h4>
+                  <p style={{ color: "#666", fontSize: "14px", margin: "0 0 10px 0" }}>
+                    {item.description ? `${item.description.substring(0, 100)}...` : "No description available"}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold", color: "#007bff" }}>{formatCurrency(item.price)}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                      <button
+                        onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
+                        style={{ width: "30px", height: "30px", border: "1px solid #ddd", backgroundColor: "white", cursor: "pointer", borderRadius: "4px" }}
+                      >-</button>
+                      <span style={{ minWidth: "40px", textAlign: "center" }}>{item.quantity}</span>
+                      <button
+                        onClick={() => handleQuantityChange(item.productId, item.quantity + 1)}
+                        style={{ width: "30px", height: "30px", border: "1px solid #ddd", backgroundColor: "white", cursor: "pointer", borderRadius: "4px" }}
+                      >+</button>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <h4 style={{ margin: "0 0 5px 0" }}>{item.name}</h4>
-                <p style={{ color: "#666", fontSize: "14px", margin: "0 0 10px 0" }}>
-                  Store: {item.tenantId}
-                </p>
-                <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-                  <span style={{ fontSize: "18px", fontWeight: "bold", color: "#007bff" }}>₹{item.price}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                    <button
-                      onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
-                      style={{ width: "30px", height: "30px", border: "1px solid #ddd", backgroundColor: "white", cursor: "pointer", borderRadius: "4px" }}
-                    >-</button>
-                    <span style={{ minWidth: "40px", textAlign: "center" }}>{item.quantity}</span>
-                    <button
-                      onClick={() => handleQuantityChange(item.productId, item.quantity + 1)}
-                      style={{ width: "30px", height: "30px", border: "1px solid #ddd", backgroundColor: "white", cursor: "pointer", borderRadius: "4px" }}
-                    >+</button>
-                  </div>
-                  <span style={{ fontSize: "16px", fontWeight: "bold" }}>₹{(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+                <div style={{ textAlign: "center" }}>
                   <button
                     onClick={() => handleRemoveFromCart(item.productId)}
-                    style={{ padding: "5px 10px", backgroundColor: "#dc3545", color: "white", border: "none", cursor: "pointer", borderRadius: "4px" }}
+                    style={{
+                      padding: "5px 10px",
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      borderRadius: "4px"
+                    }}
                   >
                     Remove
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
-
+            ))}
+          </div>
+          
           <div style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "20px", backgroundColor: "#f8f9fa", marginTop: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
               <h3>Total:</h3>
-              <span style={{ fontSize: "24px", fontWeight: "bold", color: "#007bff" }}>₹{calculateTotal().toFixed(2)}</span>
+              <span style={{ fontSize: "24px", fontWeight: "bold", color: "#007bff" }}>{formatCurrency(calculateTotal())}</span>
             </div>
             <button
               onClick={handleCheckout}
               style={{ width: "100%", padding: "15px", backgroundColor: "#28a745", color: "white", border: "none", cursor: "pointer", borderRadius: "8px", fontSize: "18px" }}
             >
-              Proceed to Checkout
+              Checkout
             </button>
           </div>
-        </div>
+        </React.Fragment>
       )}
     </div>
   );

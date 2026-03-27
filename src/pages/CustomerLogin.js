@@ -23,14 +23,26 @@ function CustomerLogin() {
     console.log("Password provided:", form.password ? "✓" : "✗");
 
     try {
-      // Validate customer credentials
-      const response = await fetch(`https://apbxv61325.execute-api.ap-south-1.amazonaws.com/prod/auth/users/${form.email}`);
+      // Send password in request body for validation
+      const response = await fetch(`https://apbxv61325.execute-api.ap-south-1.amazonaws.com/prod/auth/users/${form.email}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          password: form.password
+        })
+      });
       
       console.log("API response status:", response.status);
       
       if (!response.ok) {
         console.error("API response not OK:", response.status);
-        setError("Email not found. Please check your email or register first.");
+        if (response.status === 401) {
+          setError("Invalid password. Please try again.");
+        } else {
+          setError("Email not found. Please check your email or register first.");
+        }
         return;
       }
       
@@ -43,21 +55,15 @@ function CustomerLogin() {
         return;
       }
       
-      console.log("Stored password:", customer.password ? "✓" : "✗");
-      console.log("Password match:", customer.password === form.password ? "✓" : "✗");
+      console.log("Login successful! JWT token received:", customer.token ? "✓" : "✗");
       
-      // Validate password
-      if (customer.password === form.password) {
-        console.log("Login successful!");
-        login("USER");
-        localStorage.setItem("userId", customer.userId);
-        localStorage.setItem("customerName", customer.name);
-        localStorage.setItem("customerEmail", customer.email);
-        navigate("/user");
-      } else {
-        console.log("Password mismatch");
-        setError("Invalid password. Please try again.");
-      }
+      // Login with JWT token
+      login("USER", customer.userId, customer.token);
+      localStorage.setItem("userId", customer.userId);
+      localStorage.setItem("customerName", customer.name);
+      localStorage.setItem("customerEmail", customer.email);
+      navigate("/user");
+      
     } catch (err) {
       console.error("Login error:", err);
       setError("Login failed. Please check your credentials and try again.");

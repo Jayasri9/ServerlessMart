@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import org.mindrot.jbcrypt.BCrypt;
+import com.myorg.util.JWTUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +26,10 @@ public class AuthTenantHandler implements RequestHandler<APIGatewayProxyRequestE
             Context context) {
 
         try {
+            // Parse request body to get password
+            Map<String, String> requestBody = mapper.readValue(request.getBody(), Map.class);
+            String password = requestBody.get("password");
+            
             String tenantId = request.getPathParameters().get("tenantId");
             context.getLogger().log("Authenticating tenant with ID: " + tenantId);
 
@@ -57,6 +63,37 @@ public class AuthTenantHandler implements RequestHandler<APIGatewayProxyRequestE
                     tenantData.put(k, v.bool());
                 }
             });
+
+            // Validate password
+            String storedPassword = (String) tenantData.get("password");
+            boolean passwordValid = false;
+            
+            if (storedPassword != null) {
+                // Check if password is hashed (starts with $2a$, $2b$, etc.)
+                if (storedPassword.startsWith("$2")) {
+                    passwordValid = BCrypt.checkpw(password, storedPassword);
+                } else {
+                    // Legacy plain text password - for backward compatibility
+                    passwordValid = password.equals(storedPassword);
+                }
+            }
+
+            if (!passwordValid) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(401)
+                        .withHeaders(Map.of(
+                                "Content-Type", "application/json",
+                                "Access-Control-Allow-Origin", "*"
+                        ))
+                        .withBody("{\"error\":\"Invalid password\"}");
+            }
+
+            // Generate JWT token
+            String jwtToken = JWTUtil.generateToken(tenantId, "TENANT", tenantId);
+            
+            // Add token to response
+            tenantData.put("token", jwtToken);
+            tenantData.remove("password"); // Don't send password back to client
 
             String jsonResponse = mapper.writeValueAsString(tenantData);
 

@@ -42,29 +42,32 @@ function UserLogin() {
       console.log("Calling API:", apiUrl);
 
       const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          password: trimmedPassword
+        })
       });
 
       if (response.ok) {
         const user = await response.json();
 
-        const dbPassword = String(user.password || "").trim();
-        const inputPassword = String(trimmedPassword || "").trim();
+        console.log("✅ Login successful! JWT token received:", user.token ? "✓" : "✗");
+        
+        // Login with JWT token
+        login("USER", user.userId || user.email, user.token);
+        localStorage.setItem("userEmail", trimmedEmail);
+        localStorage.setItem("userName", user.name || "User");
+        localStorage.setItem("userId", user.userId || user.email);
 
-        if (dbPassword === inputPassword) {
-          console.log("✅ Login successful!");
-          login("USER", user.userId || user.email);
-          localStorage.setItem("userEmail", trimmedEmail);
-          localStorage.setItem("userName", user.name || "User");
-          localStorage.setItem("userId", user.userId || user.email);
-
-          alert(`Welcome back, ${user.name || "User"}!`);
-          navigate("/user");
-        } else {
-          console.log("❌ Password mismatch");
-          alert("Invalid password. Please try again.");
-        }
+        alert(`Welcome back, ${user.name || "User"}!`);
+        navigate("/user");
+        
+      } else if (response.status === 401) {
+        console.log("❌ Invalid password");
+        alert("Invalid password. Please try again.");
       } else if (response.status === 404) {
         console.log("❌ User not found");
         alert("User not found. Please check your email or register first.");

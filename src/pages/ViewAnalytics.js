@@ -121,7 +121,7 @@ const ViewAnalytics = () => {
   };
 
   const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -231,7 +231,7 @@ const ViewAnalytics = () => {
                 <tr key={product.productId} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: 12 }}>
                     <div style={{ fontWeight: "bold", color: "#333" }}>{product.name}</div>
-                    <div style={{ fontSize: 12, color: "#666" }}>${product.price} • Stock: {product.stock}</div>
+                    <div style={{ fontSize: 12, color: "#666" }}>₹{product.price} • Stock: {product.stock}</div>
                   </td>
                   <td style={{ padding: 12, textAlign: "center" }}>{product.sales}</td>
                   <td style={{ padding: 12, textAlign: "right", fontWeight: "bold", color: "#28a745" }}>{formatCurrency(product.revenue)}</td>

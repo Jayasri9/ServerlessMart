@@ -6,14 +6,12 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import com.myorg.util.AuthMiddleware;
-
 import java.util.HashMap;
 import java.util.Map;
 
-public class GetCartHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class DeleteCartHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     private static final ObjectMapper mapper = new ObjectMapper();
     private final DynamoDbClient dynamoDb = DynamoDbClient.create();
@@ -25,55 +23,18 @@ public class GetCartHandler implements RequestHandler<APIGatewayProxyRequestEven
             Context context) {
 
         try {
-            // Validate JWT token
-            AuthMiddleware.AuthResult authResult = AuthMiddleware.validateToken(request);
-            if (!authResult.isValid()) {
-                return authResult.getErrorResponse();
-            }
-            
             String userId = request.getPathParameters().get("userId");
             String tenantId = request.getPathParameters().get("tenantId");
-            
-            // Ensure the authenticated user can only access their own cart
-            if (!authResult.getUserId().equals(userId)) {
-                return AuthMiddleware.createForbiddenResponse("Access denied: You can only access your own cart");
-            }
-
-            // Debug logs
-            context.getLogger().log("CARTS_TABLE env var = " + tableName);
-            context.getLogger().log("Fetching cart for userId=" + userId + " tenantId=" + tenantId);
+            context.getLogger().log("Deleting cart for userId=" + userId + " tenantId=" + tenantId);
 
             Map<String, AttributeValue> key = new HashMap<>();
             key.put("userId", AttributeValue.builder().s(userId).build());
             key.put("tenantId", AttributeValue.builder().s(tenantId).build());
 
-            var response = dynamoDb.getItem(GetItemRequest.builder()
+            dynamoDb.deleteItem(DeleteItemRequest.builder()
                     .tableName(tableName)
                     .key(key)
                     .build());
-
-            if (response.item() == null || response.item().isEmpty()) {
-                return new APIGatewayProxyResponseEvent()
-                        .withStatusCode(404)
-                        .withHeaders(Map.of(
-                                "Content-Type", "application/json",
-                                "Access-Control-Allow-Origin", "*"
-                        ))
-                        .withBody("{\"error\":\"Cart not found\"}");
-            }
-
-            Map<String, Object> cartData = new HashMap<>();
-            response.item().forEach((k, v) -> {
-                if (v.s() != null) {
-                    cartData.put(k, v.s());
-                } else if (v.n() != null) {
-                    cartData.put(k, v.n());
-                } else if (v.bool() != null) {
-                    cartData.put(k, v.bool());
-                }
-            });
-
-            String jsonResponse = mapper.writeValueAsString(cartData);
 
             return new APIGatewayProxyResponseEvent()
                     .withStatusCode(200)
@@ -81,7 +42,7 @@ public class GetCartHandler implements RequestHandler<APIGatewayProxyRequestEven
                             "Content-Type", "application/json",
                             "Access-Control-Allow-Origin", "*"
                     ))
-                    .withBody(jsonResponse);
+                    .withBody("{\"message\":\"Cart cleared successfully\"}");
 
         } catch (Exception e) {
             context.getLogger().log("ERROR: " + e.getMessage());

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { getStores, getStoreProducts, addToCart } from "../api/api";
+import { getStores, getStoreProducts, updateCart } from "../api/api";
+import { refreshCart } from "../utils/dataSync";
+import { getRole } from "../auth/auth";
 
 function Marketplace() {
   const [stores, setStores] = useState([]);
@@ -25,7 +27,9 @@ function Marketplace() {
       data.forEach(store => {
         getStoreProducts(store.tenantId)
           .then(products => {
-            setStoreCounts(prev => ({ ...prev, [store.tenantId]: products.length }));
+            // Filter out deactivated products for count
+            const activeProducts = products.filter(p => p.isActive !== false);
+            setStoreCounts(prev => ({ ...prev, [store.tenantId]: activeProducts.length }));
           })
           .catch(err => {
             console.error("Failed to fetch count for", store.tenantId, err);
@@ -48,30 +52,53 @@ function Marketplace() {
     localStorage.setItem("currentTenantId", store.tenantId);
     try {
       const products = await getStoreProducts(store.tenantId);
-      setStoreProducts(products);
+      // Filter out deactivated products (only show active products to users)
+      const activeProducts = products.filter(p => p.isActive !== false);
+      setStoreProducts(activeProducts);
     } catch (err) {
       setStoreProducts([]);
     }
   };
 
   const handleAddToCart = async (product) => {
-    const userId = localStorage.getItem("userId") || "guest";
-    const tenantId = selectedStore.tenantId;
-
-    localStorage.setItem("currentTenantId", tenantId);
-    localStorage.setItem("tenantId", tenantId);
-
     try {
-      await addToCart({ userId, tenantId, product, quantity: 1 });
-
-      try {
-        const existing = JSON.parse(localStorage.getItem("cart") || "[]");
-        localStorage.setItem("cart", JSON.stringify([...existing, product]));
-      } catch (e) {
-        console.warn("Unable to update local cart", e);
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId")
+        || localStorage.getItem("currentTenantId")
+        || "default-tenant";
+      
+      if (!userId) {
+        alert("Please login to add items to cart");
+        return;
       }
 
-      alert("Product added to cart!");
+      // Get current cart from DynamoDB
+      const currentCart = await refreshCart(userId, tenantId, false);
+      const existingItem = currentCart.find(
+        item => item.productId === product.productId && item.tenantId === product.tenantId
+      );
+      
+      let updatedCart;
+      if (existingItem) {
+        // Update quantity if item already exists
+        updatedCart = currentCart.map(item => 
+          item.productId === product.productId && item.tenantId === product.tenantId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        // Add new item with quantity 1
+        updatedCart = [...currentCart, {
+          ...product,
+          tenantId: product.tenantId,
+          quantity: 1
+        }];
+      }
+      
+      // Save to DynamoDB
+      await updateCart(userId, tenantId, updatedCart);
+      
+      alert(`${product.name} added to cart!`);
     } catch (err) {
       console.error("Failed to add to cart:", err);
       alert("Failed to add to cart. Please try again.");

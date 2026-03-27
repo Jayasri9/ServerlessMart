@@ -1,13 +1,35 @@
 import { getCart } from '../api/api';
 
-// Get user by ID - assume endpoint exists (test needed)
+// Get user by ID
 export const getUserById = async (userId) => {
-  const res = await fetch(`https://apbxv61325.execute-api.ap-south-1.amazonaws.com/prod/auth/users/${encodeURIComponent(userId)}`);
-  if (!res.ok) throw new Error(`Failed to fetch user: ${res.status}`);
-  const user = await res.json();
-  // Remove password for security
-  const { password, ...safeUser } = user;
-  return safeUser;
+  console.log("getUserById called with userId:", userId);
+  const url = `https://apbxv61325.execute-api.ap-south-1.amazonaws.com/prod/users/${encodeURIComponent(userId)}`;
+  console.log("Making API call to:", url);
+  
+  try {
+    const res = await fetch(url);
+    console.log("API response status:", res.status);
+    console.log("API response headers:", [...res.headers.entries()]);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("API error response:", errorText);
+      throw new Error(`Failed to fetch user: ${res.status} - ${errorText}`);
+    }
+    
+    const user = await res.json();
+    console.log("API response data (raw):", user);
+    console.log("API response data (JSON.stringify):", JSON.stringify(user));
+    
+    // Remove password for security
+    const { password, ...safeUser } = user;
+    console.log("Safe user data (without password):", safeUser);
+    console.log("Safe user data (JSON.stringify):", JSON.stringify(safeUser));
+    return safeUser;
+  } catch (error) {
+    console.error("getUserById error:", error);
+    throw error;
+  }
 };
 
 // Refresh cart: API first, parse items JSON

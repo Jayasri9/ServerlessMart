@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import org.mindrot.jbcrypt.BCrypt;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,13 +36,18 @@ public class CreateUserHandler implements RequestHandler<APIGatewayProxyRequestE
             String email = body.get("email");
             String password = body.get("password");
             String phone = body.containsKey("phone") ? body.get("phone") : "";
+            String address = body.containsKey("address") ? body.get("address") : "";
+
+            // Hash the password using BCrypt
+            String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
             Map<String, AttributeValue> item = new HashMap<>();
             item.put("userId", AttributeValue.builder().s(userId).build());
             item.put("name", AttributeValue.builder().s(name).build());
             item.put("email", AttributeValue.builder().s(email).build());
-            item.put("password", AttributeValue.builder().s(password).build());
+            item.put("password", AttributeValue.builder().s(hashedPassword).build());
             item.put("phone", AttributeValue.builder().s(phone).build());
+            item.put("address", AttributeValue.builder().s(address).build());
             item.put("createdAt", AttributeValue.builder().s(java.time.Instant.now().toString()).build());
 
             dynamoDb.putItem(PutItemRequest.builder()

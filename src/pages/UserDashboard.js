@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProducts } from "../api/api";
 import { getRole, logout } from "../auth/auth";
+import { addToCart, getCart, updateCart } from "../api/api";
+import { refreshCart } from "../utils/dataSync";
+import { formatCurrency } from "../utils/currency";
 
 function UserDashboard() {
   const navigate = useNavigate();
@@ -57,6 +60,10 @@ function UserDashboard() {
         
         // Filter products
         let filteredProducts = productsData;
+        
+        // Filter out deactivated products (only show active products to users)
+        filteredProducts = filteredProducts.filter(p => p.isActive !== false);
+        
         if (selectedCategory !== "all") {
           filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
         }
@@ -74,11 +81,16 @@ function UserDashboard() {
       }
     };
 
-    const loadCartItems = () => {
+    const loadCartItems = async () => {
       try {
-        const savedCart = localStorage.getItem("cart");
-        if (savedCart) {
-          setCartItems(JSON.parse(savedCart));
+        const userId = localStorage.getItem("userId");
+        const tenantId = localStorage.getItem("tenantId")
+          || localStorage.getItem("currentTenantId")
+          || "default-tenant";
+        
+        if (userId) {
+          const items = await refreshCart(userId, tenantId, false);
+          setCartItems(items);
         }
       } catch (err) {
         console.error("Failed to load cart items:", err);
@@ -96,26 +108,53 @@ function UserDashboard() {
     navigate(`/store/${tenantId}`);
   };
 
-  const handleAddToCart = (product) => {
-    const currentCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const existingItem = currentCart.find(
-      item => item.productId === product.productId && item.tenantId === product.tenantId
-    );
-    
-    if (existingItem) {
-      // Update quantity if item already exists
-      existingItem.quantity += 1;
-    } else {
-      // Add new item with quantity 1
-      currentCart.push({
-        ...product,
-        tenantId: product.tenantId,
-        quantity: 1
-      });
+  const handleAddToCart = async (product) => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId")
+        || localStorage.getItem("currentTenantId")
+        || "default-tenant";
+      
+      if (!userId) {
+        alert("Please login to add items to cart");
+        return;
+      }
+
+      // Get current cart from DynamoDB
+      const currentCart = await refreshCart(userId, tenantId, false);
+      const existingItem = currentCart.find(
+        item => item.productId === product.productId && item.tenantId === product.tenantId
+      );
+      
+      let updatedCart;
+      if (existingItem) {
+        // Update quantity if item already exists
+        updatedCart = currentCart.map(item => 
+          item.productId === product.productId && item.tenantId === product.tenantId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        // Add new item with quantity 1
+        updatedCart = [...currentCart, {
+          ...product,
+          tenantId: product.tenantId,
+          quantity: 1
+        }];
+      }
+      
+      // Save to DynamoDB
+      await updateCart(userId, tenantId, updatedCart);
+      
+      // Refresh local state
+      const items = await refreshCart(userId, tenantId, false);
+      setCartItems(items);
+      
+      alert(`${product.name} added to cart!`);
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      alert("Failed to add to cart. Please try again.");
     }
-    
-    localStorage.setItem("cart", JSON.stringify(currentCart));
-    alert(`${product.name} added to cart!`);
   };
 
   const handleLogout = () => {
@@ -333,7 +372,7 @@ function UserDashboard() {
                 </p>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "18px", fontWeight: "bold", color: "#007bff" }}>
-                    ₹{product.price}
+                    {formatCurrency(product.price)}
                   </span>
                   <span style={{ fontSize: "12px", color: "#666" }}>
                     Store: {tenantDetails[product.tenantId]?.storeName || product.tenantId}

@@ -99,7 +99,6 @@ function Checkout() {
       console.log("Creating order with data:", orderData);
       await createOrder(orderData);
 
-      const tenantId = cartItems[0]?.tenantId || localStorage.getItem("tenantId") || "default-tenant";
       await updateCart(userId, tenantId, []);
       alert(`Order placed successfully! Payment ID: ${paymentResult.paymentId}`);
       navigate("/orders");
@@ -142,7 +141,6 @@ function Checkout() {
       console.log("Creating COD order with data:", orderData);
       await createOrder(orderData);
 
-      const tenantId = cartItems[0]?.tenantId || localStorage.getItem("tenantId") || "default-tenant";
       await updateCart(userId, tenantId, []);
       alert("Order placed successfully! You will pay on delivery.");
       navigate("/orders");

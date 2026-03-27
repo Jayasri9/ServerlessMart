@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRole } from "../auth/auth";
+import { updateUser, getOrders } from "../api/api";
+import { getUserById, refreshCart } from "../utils/dataSync";
 
 function UserProfile() {
   const navigate = useNavigate();
@@ -13,6 +15,10 @@ function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    cartItems: 0
+  });
 
   useEffect(() => {
     const role = getRole();
@@ -21,28 +27,101 @@ function UserProfile() {
       return;
     }
     loadProfile();
+    loadStats();
   }, [navigate]);
 
-  const loadProfile = () => {
+  const loadProfile = async () => {
     try {
-      const savedProfile = localStorage.getItem("userProfile");
-      const userName = localStorage.getItem("userName");
       const userEmail = localStorage.getItem("userEmail");
+      const userId = localStorage.getItem("userId");
+      const userName = localStorage.getItem("userName");
       
-      if (savedProfile) {
-        setProfile(JSON.parse(savedProfile));
-      } else {
+      if (!userEmail && !userId) {
+        console.error("No user email or ID found in localStorage");
+        setProfile({
+          name: "",
+          email: "",
+          phone: "",
+          address: ""
+        });
+        return;
+      }
+
+      // Use email as userId since that's how the auth system works
+      const lookupId = userEmail || userId;
+      console.log("Fetching user data for:", lookupId);
+      
+      try {
+        const userData = await getUserById(lookupId);
+        console.log("User data received:", userData);
+        
+        if (userData) {
+          const profileData = {
+            name: userData.name || userName || "",
+            email: userData.email || lookupId || "",
+            phone: userData.phone || "",
+            address: userData.address || ""
+          };
+          console.log("Setting profile:", profileData);
+          setProfile(profileData);
+        } else {
+          console.error("No user data received");
+        }
+      } catch (err) {
+        console.error("Failed to fetch user data:", err);
+        // Fallback to localStorage data
         setProfile({
           name: userName || "",
-          email: userEmail || "",
+          email: userEmail || userId || "",
           phone: "",
           address: ""
         });
       }
     } catch (err) {
       console.error("Failed to load profile:", err);
+      setProfile({
+        name: localStorage.getItem("userName") || "",
+        email: localStorage.getItem("userEmail") || localStorage.getItem("userId") || "",
+        phone: "",
+        address: ""
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId") 
+        || localStorage.getItem("currentTenantId") 
+        || "default-tenant";
+
+      console.log("Loading stats for userId:", userId, "tenantId:", tenantId);
+
+      // Get orders count
+      console.log("Fetching orders...");
+      const orders = await getOrders(userId);
+      const totalOrders = orders ? orders.length : 0;
+      console.log("Orders fetched:", orders);
+
+      // Get cart items count
+      console.log("Fetching cart items...");
+      const cartItems = await refreshCart(userId, tenantId, false);
+      const cartItemsCount = cartItems ? cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
+      console.log("Cart items fetched:", cartItems);
+
+      setStats({
+        totalOrders,
+        cartItems: cartItemsCount
+      });
+      console.log("Stats set:", { totalOrders, cartItems: cartItemsCount });
+    } catch (err) {
+      console.error("Failed to load stats:", err);
+      setStats({
+        totalOrders: 0,
+        cartItems: 0
+      });
     }
   };
 
@@ -53,15 +132,30 @@ function UserProfile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      localStorage.setItem("userProfile", JSON.stringify(profile));
-      localStorage.setItem("userName", profile.name);
-      localStorage.setItem("userEmail", profile.email);
+      const userId = localStorage.getItem("userId");
+      
+      if (!userId) {
+        alert("User not found. Please login again.");
+        return;
+      }
+
+      // Create a copy of current profile state to preserve it
+      const currentProfile = { ...profile };
+      
+      // Update user data in DynamoDB
+      await updateUser(userId, currentProfile);
       
       alert("Profile updated successfully!");
       setEditing(false);
+      // Reload stats to reflect any changes
+      await loadStats();
+      // Don't reload profile - trust the local state which has the latest changes
+      console.log("Profile saved successfully, keeping current state:", currentProfile);
     } catch (err) {
       console.error("Failed to update profile:", err);
       alert("Failed to update profile: " + err.message);
+      // On error, reload the profile to restore original state
+      await loadProfile();
     } finally {
       setSaving(false);
     }
@@ -247,13 +341,13 @@ function UserProfile() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           <div style={{ textAlign: "center", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
             <div style={{ fontSize: "24px", fontWeight: "bold", color: "#007bff" }}>
-              {JSON.parse(localStorage.getItem("userOrders") || "[]").length}
+              {stats.totalOrders}
             </div>
             <div style={{ color: "#666", fontSize: "14px" }}>Total Orders</div>
           </div>
           <div style={{ textAlign: "center", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
             <div style={{ fontSize: "24px", fontWeight: "bold", color: "#28a745" }}>
-              {JSON.parse(localStorage.getItem("cart") || "[]").reduce((sum, item) => sum + item.quantity, 0)}
+              {stats.cartItems}
             </div>
             <div style={{ color: "#666", fontSize: "14px" }}>Items in Cart</div>
           </div>

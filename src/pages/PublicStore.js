@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStoreProducts } from "../api/api";
+import { updateCart } from "../api/api";
+import { refreshCart } from "../utils/dataSync";
+import { getRole } from "../auth/auth";
 
 function PublicStore() {
   const { tenantId } = useParams();
@@ -35,7 +38,9 @@ function PublicStore() {
           setStoreData(tenant);
           try {
             const tenantProducts = await getStoreProducts(effectiveId);
-            setProducts(tenantProducts);
+            // Filter out deactivated products (only show active products to users)
+            const activeProducts = tenantProducts.filter(p => p.isActive !== false);
+            setProducts(activeProducts);
           } catch (err) {
             console.error("Failed to fetch store products", err);
           }
@@ -51,10 +56,17 @@ function PublicStore() {
     }
   }, [decodedTenantId]);
 
-  const loadCart = useCallback(() => {
+  const loadCart = useCallback(async () => {
     try {
-      const savedCart = localStorage.getItem("cart");
-      if (savedCart) setCart(JSON.parse(savedCart));
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId")
+        || localStorage.getItem("currentTenantId")
+        || "default-tenant";
+      
+      if (userId) {
+        const items = await refreshCart(userId, tenantId, false);
+        setCart(items);
+      }
     } catch (err) {
       console.error("Failed to load cart:", err);
     }
@@ -65,21 +77,42 @@ function PublicStore() {
     loadCart();
   }, [loadStoreData, loadCart]);
 
-  const addToCart = (product) => {
-    const existingItem = cart.find((item) => item.productId === product.productId);
-    let updatedCart;
-    if (existingItem) {
-      updatedCart = cart.map((item) =>
-        item.productId === product.productId
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      );
-    } else {
-      updatedCart = [...cart, { ...product, quantity: 1 }];
+  const addToCart = async (product) => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const tenantId = localStorage.getItem("tenantId")
+        || localStorage.getItem("currentTenantId")
+        || "default-tenant";
+      
+      if (!userId) {
+        alert("Please login to add items to cart");
+        return;
+      }
+
+      const existingItem = cart.find((item) => item.productId === product.productId);
+      let updatedCart;
+      if (existingItem) {
+        updatedCart = cart.map((item) =>
+          item.productId === product.productId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        updatedCart = [...cart, { ...product, quantity: 1 }];
+      }
+      
+      // Save to DynamoDB
+      await updateCart(userId, tenantId, updatedCart);
+      
+      // Refresh local state
+      const items = await refreshCart(userId, tenantId, false);
+      setCart(items);
+      
+      alert(`${product.name} added to cart!`);
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      alert("Failed to add to cart. Please try again.");
     }
-    setCart(updatedCart);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-    alert(`${product.name} added to cart!`);
   };
 
   const getCartCount = () => cart.reduce((total, item) => total + item.quantity, 0);
@@ -251,7 +284,7 @@ function PublicStore() {
                       {product.description?.length > 120 ? "..." : ""}
                     </p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                      <span style={{ fontSize: "1.5em", fontWeight: "bold", color: "#28a745" }}>${product.price}</span>
+                      <span style={{ fontSize: "1.5em", fontWeight: "bold", color: "#28a745" }}>₹{product.price}</span>
                       <span style={{ fontSize: "0.9em", fontWeight: "bold", color: product.stock > 0 ? "#28a745" : "#dc3545" }}>
                         {product.stock > 0 ? `In Stock (${product.stock})` : "Out of Stock"}
                       </span>

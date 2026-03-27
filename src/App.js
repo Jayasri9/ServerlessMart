@@ -18,6 +18,8 @@ import UserDashboard from "./pages/UserDashboard";
 import AllStores from "./pages/AllStores";
 import Orders from "./pages/Orders";
 import Checkout from "./pages/Checkout";
+// Import API interceptor to enable JWT token management
+import "./utils/apiInterceptor";
 import UserProfile from "./pages/UserProfile";
 import Cart from "./pages/Cart";
 import { getRole } from "./auth/auth";
