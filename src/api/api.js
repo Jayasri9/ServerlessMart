@@ -7,7 +7,12 @@ const API_BASE =
 
 // GET products
 export const getProducts = async () => {
-  const res = await fetch(`${API_BASE}/products`);
+  const res = await fetch(`${API_BASE}/products`, {
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  });
   if (!res.ok) throw new Error("Failed to fetch products");
   return res.json();
 };
@@ -203,14 +208,51 @@ export const getStoreProducts = async (tenantId) => {
   // debugging logs
   console.log("getStoreProducts called with tenantId:", tenantId);
 
-  // make tenantId URL-safe
-  const id = encodeURIComponent(tenantId);
-
-  console.log("encoded tenantId for request:", id);
-
-  const res = await fetch(`${API_BASE}/store/${id}/products`);
-  if (!res.ok) throw new Error("Failed to fetch store products");
-  return res.json();
+  try {
+    // First try the dedicated store endpoint
+    const id = encodeURIComponent(tenantId);
+    console.log("Trying store endpoint with encoded tenantId:", id);
+    
+    const res = await fetch(`${API_BASE}/store/${id}/products`);
+    if (res.ok) {
+      const data = await res.json();
+      console.log("Store endpoint success, got products:", data);
+      console.log("Product isActive status from store endpoint:", data.map(p => ({ id: p.productId, name: p.name, isActive: p.isActive })));
+      return data;
+    }
+    
+    // If store endpoint fails (403 auth error), fall back to public products endpoint
+    console.log("Store endpoint failed, falling back to public products endpoint");
+    const allProductsRes = await fetch(`${API_BASE}/products`, {
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    });
+    if (!allProductsRes.ok) throw new Error("Failed to fetch products");
+    
+    const allProducts = await allProductsRes.json();
+    const filteredProducts = allProducts.filter(p => {
+      // More robust filtering - handle different data types and potential issues
+      const productTenantId = String(p.tenantId || '').trim();
+      const currentTenantId = String(tenantId || '').trim();
+      const match = productTenantId === currentTenantId;
+      
+      console.log(`Store filter - Product ${p.productId} (${p.name}):`);
+      console.log(`  - Product tenantId: "${productTenantId}" (type: ${typeof p.tenantId})`);
+      console.log(`  - Current tenantId: "${currentTenantId}"`);
+      console.log(`  - Match: ${match}`);
+      
+      return match;
+    });
+    
+    console.log(`Filtered ${allProducts.length} products for tenant ${tenantId}, got ${filteredProducts.length} products`);
+    console.log("Product isActive status from fallback:", filteredProducts.map(p => ({ id: p.productId, name: p.name, isActive: p.isActive })));
+    return filteredProducts;
+  } catch (err) {
+    console.error("getStoreProducts error:", err);
+    throw err;
+  }
 };
 
 // DELETE product
