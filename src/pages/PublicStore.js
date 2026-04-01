@@ -35,7 +35,6 @@ function PublicStore() {
           }
           if (tenant) {
             setStoreData(tenant);
-          setStoreData(tenant);
           try {
             const tenantProducts = await getStoreProducts(effectiveId);
             // Filter out deactivated products (only show active products to users)
@@ -211,7 +210,7 @@ function PublicStore() {
               <strong>Contact:</strong> {storeData.email}
             </div>
             <div>
-              <strong>Products:</strong> {products.length} items
+              <strong>Active Products:</strong> {products.length} items
             </div>
           </div>
         </div>

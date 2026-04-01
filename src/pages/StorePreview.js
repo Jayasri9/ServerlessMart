@@ -125,7 +125,7 @@ function StorePreview() {
             <strong>Email:</strong> {tenantData.email}
           </p>
           <p style={{ margin: "5px 0", color: "#666" }}>
-            <strong>Total Products:</strong> {products.length}
+            <strong>Active Products:</strong> {products.length}
           </p>
         </div>
 

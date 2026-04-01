@@ -177,7 +177,7 @@ function Marketplace() {
                     <strong>Email:</strong> {store.email}
                   </p>
                   <p style={{ color: "#666", margin: "10px 0" }}>
-                    <strong>Products:</strong> {storeCounts[store.tenantId] ?? 0} item{storeCounts[store.tenantId] === 1 ? "" : "s"}
+                    <strong>Active Products:</strong> {storeCounts[store.tenantId] ?? 0} item{storeCounts[store.tenantId] === 1 ? "" : "s"}
                   </p>
                   <button
                     style={{

@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public class GetStoreProductsHandler implements RequestHandler<APIGatewayProxyRe
 
         try {
             String tenantId = request.getPathParameters().get("tenantId");
+            context.getLogger().log("Raw tenantId: " + tenantId);
 
             // Decode tenantId in case it is URL encoded
             try {
@@ -34,41 +36,79 @@ public class GetStoreProductsHandler implements RequestHandler<APIGatewayProxyRe
                         tenantId,
                         java.nio.charset.StandardCharsets.UTF_8
                 );
+                context.getLogger().log("Decoded tenantId: " + tenantId);
             } catch (Exception e) {
                 context.getLogger().log("Failed to decode tenantId, using raw value: " + tenantId);
             }
 
-            context.getLogger().log("Getting products for store (decoded): " + tenantId);
-
-            ScanRequest scanRequest = ScanRequest.builder()
-                    .tableName(tableName)
-                    .build();
-
-            var response = dynamoDb.scan(scanRequest);
-
-            List<Map<String, Object>> productsList = new ArrayList<>();
-
-            for (Map<String, AttributeValue> item : response.items()) {
-
-                String itemTenantId = item.get("tenantId").s();
-
-                if (tenantId.equals(itemTenantId)) {
-
-                    Map<String, Object> productData = new HashMap<>();
-
-                    item.forEach((k, v) -> {
-                        if (v.s() != null) {
-                            productData.put(k, v.s());
-                        } else if (v.n() != null) {
-                            productData.put(k, v.n());
-                        } else if (v.bool() != null) {
-                            productData.put(k, v.bool());
-                        }
-                    });
-
-                    productsList.add(productData);
+            // Use a Map to deduplicate by productId
+            Map<String, Map<String, Object>> productMap = new HashMap<>();
+            Map<String, AttributeValue> lastEvaluatedKey = null;
+            int scanCount = 0;
+            
+            do {
+                scanCount++;
+                ScanRequest.Builder scanBuilder = ScanRequest.builder()
+                        .tableName(tableName)
+                        .limit(50);
+                
+                if (lastEvaluatedKey != null) {
+                    scanBuilder.exclusiveStartKey(lastEvaluatedKey);
                 }
-            }
+                
+                ScanResponse response = dynamoDb.scan(scanBuilder.build());
+                context.getLogger().log("Scan " + scanCount + ": got " + response.items().size() + " items");
+
+                for (Map<String, AttributeValue> item : response.items()) {
+                    try {
+                        String itemTenantId = item.get("tenantId").s();
+
+                        if (tenantId.equals(itemTenantId)) {
+                            // Only include active products
+                            Boolean isActive = item.containsKey("isActive") ? item.get("isActive").bool() : true;
+                            if (!isActive) {
+                                continue;
+                            }
+                            
+                            String productId = item.get("productId").s();
+                            
+                            // Skip if we already have this product
+                            if (productMap.containsKey(productId)) {
+                                continue;
+                            }
+
+                            Map<String, Object> productData = new HashMap<>();
+
+                            item.forEach((k, v) -> {
+                                if (v.s() != null) {
+                                    productData.put(k, v.s());
+                                } else if (v.n() != null) {
+                                    productData.put(k, v.n());
+                                } else if (v.bool() != null) {
+                                    productData.put(k, v.bool());
+                                }
+                            });
+
+                            productMap.put(productId, productData);
+                        }
+                    } catch (Exception e) {
+                        context.getLogger().log("Error processing product: " + e.getMessage());
+                    }
+                }
+                
+                lastEvaluatedKey = response.lastEvaluatedKey();
+                
+                // Safety limit
+                if (scanCount > 10) {
+                    context.getLogger().log("Safety limit reached");
+                    break;
+                }
+                
+            } while (lastEvaluatedKey != null);
+
+            // Convert Map values to List
+            List<Map<String, Object>> productsList = new ArrayList<>(productMap.values());
+            context.getLogger().log("Total unique products for store " + tenantId + ": " + productsList.size());
 
             String jsonResponse = mapper.writeValueAsString(productsList);
 

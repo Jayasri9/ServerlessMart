@@ -187,7 +187,7 @@ function AllStores() {
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#666", fontSize: "14px" }}>Products:</span>
+                  <span style={{ color: "#666", fontSize: "14px" }}>Active Products:</span>
                   <span style={{ color: "#007bff", fontWeight: "bold", fontSize: "16px" }}>
                     {storeCounts[tenant.tenantId] || 0}
                   </span>
